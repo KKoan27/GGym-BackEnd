@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:server/Utilitys/custom_env.dart';
@@ -13,7 +14,7 @@ Middleware verifyJWT() {
   return (Handler innerHandler) {
     return (Request request) async {
       try {
-        String secret = await Customenv.get<String>(key: 'JWTsecret');
+        String secret = Platform.environment['JWTsecret'] ?? await Customenv.get<String>(key: 'JWTsecret');
 
         String? authorization = request.headers['Authorization'];
 
