@@ -1,6 +1,5 @@
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:server/Models/UserModel.dart';
-import 'package:shelf/shelf.dart';
 
 class UserDAO {
   Db db;
@@ -11,46 +10,66 @@ class UserDAO {
   }
 
   Future<UserModel?> findUser(UserModel user) async {
-
     try {
-       List<Map<String, dynamic>> orFilters = [{'email': user.email},{'nome': user.nome}];
+      List<Map<String, dynamic>> orFilters = [
+        {'email': user.email},
+        {'nome': user.nome},
+      ];
 
-    // A MÁGICA DA EDIÇÃO:
-    // Se o objeto já tem um ID, queremos buscar conflitos com OUTROS usuários
+      // A MÁGICA DA EDIÇÃO:
+      // Se o objeto já tem um ID, queremos buscar conflitos com OUTROS usuários
 
-    Map<String, dynamic> query = {r'$or': orFilters};
+      Map<String, dynamic> query = {r'$or': orFilters};
 
-    if (user.id != null) {
-      query['_id'] = {r'$ne': user.id};
+      if (user.id != null) {
+        query['_id'] = {r'$ne': user.id};
 
-      //     {
-      //   "$or": [
-      //     {"email": "vini@academia.com"},
-      //     {"nome": "vinicius_arquiteto"}
-      //   ],
-      //   "_id": {
-      //     "$ne": ObjectId("65f123abc456def789012345")
-      //   }
-      // }
-    }
+        //     {
+        //   "$or": [
+        //     {"email": "vini@academia.com"},
+        //     {"nome": "vinicius_arquiteto"}
+        //   ],
+        //   "_id": {
+        //     "$ne": ObjectId("65f123abc456def789012345")
+        //   }
+        // }
+      }
 
-    final result = await db.collection('Usuarios').findOne(query);
-    return result == null ? null : UserModel(id: result['_id'],email: result['email'], nome: result['nome'], senha: result['senha'], altura: result['altura'], peso: result['peso'] );
+      final result = await db.collection('Usuarios').findOne(query);
+      return result == null
+          ? null
+          : UserModel(
+              id: result['_id'],
+              email: result['email'],
+              nome: result['nome'],
+              senha: result['senha'],
+              altura: result['altura'],
+              peso: result['peso'],
+            );
     } on MongoDartError catch (e) {
-      
+      throw e;
+    } catch (e, s) {
+      print("$e, $s");
       throw e;
     }
-    
-     catch (e, s) {
-        print("$e, $s");
-        throw e;
-
-    }
     // Criamos um mapa para o $or (Email ou Nome)
-   
   }
 
-// TALVEZ NEM PRECISE
+  Future<UserModel?> findByEmail(String email) async {
+    final result = await db.collection('Usuarios').findOne({'email': email});
+    if (result == null) return null;
+
+    return UserModel(
+      id: result['_id'] as ObjectId,
+      email: result['email'],
+      nome: result['nome'],
+      senha: result['senha'],
+      altura: result['altura'],
+      peso: result['peso'],
+    );
+  }
+
+  // TALVEZ NEM PRECISE
 
   // Future<UserModel?> findByEmail(UserModel usuario) async {
   //   var user = await db.collection('Usuarios').findOne(
@@ -63,22 +82,12 @@ class UserDAO {
   //   return UserModel(email: user['email'], nome: user['nome'], senha: user['senha']);
   // }
 
-  Future<bool> UpdateUser(UserModel usuario, UserModel updateuser) async {
-    try {
-      var result = await db
-          .collection('Usuarios')
-          .updateOne({'_id': usuario.id}, {'\$set': updateuser.toSetting()});
-
-      if (result.hasWriteErrors) {
-        throw (("Erro na atualização:${result.writeError!.errmsg}"));
-      }
-      return true;
-    } on MongoDartError catch (mongoError) {
-      print("erro no Mongo: ");
-      return false;
-    } on Exception catch (e) {
-      print(e);
-      return false;
-    }
+  Future<WriteResult> UpdateUser(
+    UserModel usuario,
+    UserModel updateuser,
+  ) async {
+    return await db
+        .collection('Usuarios')
+        .updateOne({'_id': usuario.id}, {'\$set': updateuser.toSetting()});
   }
 }

@@ -108,14 +108,70 @@ class Treinoscontroller {
     }
   }
 
-  //   Future<Response> updateTreino(Request request)async{
+  Future<Response> updateTreino(Request request) async {
+    try {
+      final treinoId = request.url.queryParameters['TreinoId'];
+      if (treinoId == null || treinoId.isEmpty) {
+        throw MissingParametersException("TreinoId não foi inserido na URL");
+      }
 
-  //   try{
+      final body = await returnjson(request);
+      if (body == null ||
+          body['nomeTreino'] is! String ||
+          body['exercicios'] is! List) {
+        throw MissingParametersException();
+      }
 
-  // }
-  // catch (e){
+      final userId = await treinoservice.findTreinoUserId(treinoId);
+      final exerciciosRequest = body['exercicios'] as List<dynamic>;
+      final nomesExercicios = exerciciosRequest
+          .map((item) => (item as Map<String, dynamic>)['nome'] as String)
+          .toList();
 
-  // }
+      final exercicios = await treinoservice.verifyExercicios(nomesExercicios);
+      // Após verificação, aqui está anexando o objeto exercicio ao seu nome
 
-  //   }
+      final exerciciosPorNome = {
+        for (final exercicio in exercicios) exercicio.nome: exercicio,
+      };
+      final itensTreino = exerciciosRequest.map((item) {
+        final itemMap = item as Map<String, dynamic>;
+        return ItemTreino(
+          exercicio: exerciciosPorNome[itemMap['nome'] as String]!,
+          repeticoes: itemMap['repeticoes'] as int,
+          intervalo: itemMap['intervalo'] as int,
+        );
+      }).toList();
+
+      final treino = TreinoModel(
+        nome: body['nomeTreino'] as String,
+        userId: userId,
+        itemTreino: itensTreino,
+      );
+      await treinoservice.updateTreino(treinoId, treino);
+
+      return Response.ok(
+        "A troca foi bem sucedida : \n TreinoID: $treinoId,\n Nome do Treino : ${treino.nome}",
+      );
+    } on ExercicioNotFoundException catch (e) {
+      return Response.notFound(
+        jsonEncode({'erro': e.message, 'exercicios': e.listExercicios}),
+      );
+    } on TreinoNotFoundException catch (e) {
+      return Response.notFound(jsonEncode({'erro': e.message}));
+    } on MissingParametersException catch (e) {
+      return Response.badRequest(body: jsonEncode({'erro': e.message}));
+    } on MongoDartError catch (e, s) {
+      print("Erro ao atualizar treino: $e\n$s");
+      return Response(
+        502,
+        body: jsonEncode({'erro': 'Não foi possível atualizar o treino'}),
+      );
+    } on DataBaseException catch (e) {
+      return Response(502, body: jsonEncode({'erro': e.message}));
+    } catch (e, s) {
+      print("Erro ao atualizar treino: $e\n$s");
+      return Response.badRequest(body: jsonEncode({'erro': e.toString()}));
+    }
+  }
 }

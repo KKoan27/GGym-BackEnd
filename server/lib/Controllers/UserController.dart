@@ -1,6 +1,7 @@
 // ignore: file_names
 import 'dart:convert';
 import 'dart:io';
+import 'package:mongo_dart/mongo_dart.dart';
 import 'package:server/Controllers/JWTController.dart';
 import 'package:server/Models/UserModel.dart';
 import 'package:server/Services/UserService.dart';
@@ -8,7 +9,6 @@ import 'package:server/Utilitys/custom_env.dart';
 import 'package:shelf/shelf.dart';
 import 'package:server/Utilitys/ReturnJson.dart';
 import 'package:server/Utilitys/Exceptions.dart';
-import 'package:server/Utilitys/custom_env.dart';
 
 class UserController {
   UserService userservice;
@@ -56,11 +56,6 @@ class UserController {
           Platform.environment['JWTsecret'] ??
           await Customenv.get<String>(key: 'JWTsecret');
 
-      UserModel user = UserModel.auth(
-        email: body['name'],
-        senha: body['password'],
-      );
-
       UserModel userRequest = UserModel.auth(
         email: body['email'],
         senha: body['senha'],
@@ -89,6 +84,43 @@ class UserController {
     } catch (e, s) {
       print(s);
       return Response.badRequest(body: jsonEncode({'error': e}));
+    }
+  }
+
+  Future<Response> updateSettings(Request request) async {
+    try {
+      final body = await returnjson(request);
+      if (body == null ||
+          body['email'] is! String ||
+          body['altura'] is! num ||
+          body['peso'] is! num) {
+        throw MissingParametersException();
+      }
+
+      final settings = UserModel.setting(
+        email: body['email'] as String,
+        altura: (body['altura'] as num).toDouble(),
+        peso: (body['peso'] as num).toDouble(),
+      );
+
+      await userservice.UpdateSettings(settings);
+      return Response.ok("Configurações executadas");
+    } on UserNotFoundException catch (e) {
+      return Response.notFound(jsonEncode({'erro': e.message}));
+    } on MissingParametersException catch (e) {
+      return Response.badRequest(body: jsonEncode({'erro': e.message}));
+    } on MongoDartError catch (e) {
+      print("Erro ao atualizar configurações do usuário: $e");
+      return Response(
+        502,
+        body:
+            "A requisição passou para o banco de dados, mas a alteração não foi executada",
+      );
+    } on DataBaseException catch (e) {
+      return Response(502, body: jsonEncode({'erro': e.message}));
+    } catch (e, s) {
+      print("Erro ao atualizar configurações do usuário: $e\n$s");
+      return Response.badRequest(body: jsonEncode({'erro': e.toString()}));
     }
   }
 }
