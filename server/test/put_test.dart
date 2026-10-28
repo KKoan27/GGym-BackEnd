@@ -1,22 +1,15 @@
 import 'dart:convert';
-
-import 'package:mongo_dart/mongo_dart.dart';
+import "lib/fakeTreinoService.dart";
+import "lib/fakeUserService.dart";
 import 'package:server/Controllers/TreinosController.dart';
 import 'package:server/Controllers/UserController.dart';
-import 'package:server/Models/ExercicioModel.dart';
-import 'package:server/Models/TreinoModel.dart';
-import 'package:server/Models/UserModel.dart';
-import 'package:server/Services/TreinoService.dart';
-import 'package:server/Services/UserService.dart';
-import 'package:server/data/DAO/TreinoDAO.dart';
-import 'package:server/data/DAO/UserDAO.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('PUT /user', () {
     test('atualiza as configurações do usuário', () async {
-      final service = _FakeUserService();
+      final service = FakeUserService();
       final controller = UserController(service);
 
       final response = await controller.updateSettings(
@@ -39,7 +32,7 @@ void main() {
     });
 
     test('retorna 400 quando faltam parâmetros obrigatórios', () async {
-      final service = _FakeUserService();
+      final service = FakeUserService();
       final controller = UserController(service);
 
       final response = await controller.updateSettings(
@@ -59,7 +52,7 @@ void main() {
     const treinoId = '65f123abc456def789012345';
 
     test('atualiza o treino com os exercícios informados', () async {
-      final service = _FakeTreinoService();
+      final service = FakeTreinoService();
       final controller = Treinoscontroller(service);
 
       final response = await controller.updateTreino(
@@ -87,7 +80,7 @@ void main() {
     });
 
     test('retorna 400 quando o identificador do treino está ausente', () async {
-      final service = _FakeTreinoService();
+      final service = FakeTreinoService();
       final controller = Treinoscontroller(service);
 
       final response = await controller.updateTreino(
@@ -102,46 +95,4 @@ void main() {
       expect(service.updatedTreino, isNull);
     });
   });
-}
-
-class _FakeUserService extends UserService {
-  _FakeUserService() : super(UserDAO(Db('mongodb://localhost/test')));
-
-  UserModel? settings;
-
-  @override
-  Future<void> UpdateSettings(UserModel settings) async {
-    this.settings = settings;
-  }
-}
-
-class _FakeTreinoService extends TreinoService {
-  _FakeTreinoService() : super(TreinoDAO(Db('mongodb://localhost/test')));
-
-  final ObjectId userId = ObjectId.fromHexString('65f123abc456def789012346');
-  TreinoModel? updatedTreino;
-  String? updatedId;
-
-  @override
-  Future<ObjectId> findTreinoUserId(String treinoId) async => userId;
-
-  @override
-  Future<Set<ExercicioModel>> verifyExercicios(
-    List<String> listaNomesExercicios,
-  ) async {
-    return {
-      ExercicioModel(
-        nome: 'Supino',
-        musculosAlvo: ['Peito'],
-        descricao: 'Empurrar a barra',
-        execucao: 'Deitado no banco',
-      ),
-    };
-  }
-
-  @override
-  Future<void> updateTreino(String treinoId, TreinoModel treino) async {
-    updatedId = treinoId;
-    updatedTreino = treino;
-  }
 }
