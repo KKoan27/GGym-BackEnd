@@ -13,6 +13,7 @@ dependencies:
   mongo_dart: ^0.10.5
   shelf_cors_headers: ^0.1.5
   dart_jsonwebtoken: ^3.4.1
+  bcrypt: ^1.2.0
 
 dev_dependencies:
   lints: ^6.0.0

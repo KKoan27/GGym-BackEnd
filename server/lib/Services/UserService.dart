@@ -1,3 +1,4 @@
+import 'package:bcrypt/bcrypt.dart';
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:server/Models/UserModel.dart';
 import 'package:server/data/DAO/UserDAO.dart';
@@ -9,8 +10,10 @@ class UserService {
   UserService(this.userdao);
 
   Future<UserModel> Register(UserModel usuario) async {
-    if (await userdao.findUser(usuario) != null)
+    if (await userdao.findUser(usuario) != null) {
       throw UserAlreadyExistsException();
+    }
+    usuario.senha = BCrypt.hashpw(usuario.senha!, BCrypt.gensalt());
 
     WriteResult resultInsert = await userdao.InsertUser(usuario);
 
@@ -28,8 +31,9 @@ class UserService {
 
     if (userResponse == null) throw UserNotFoundException();
 
-    if (userResponse.senha != userRequest.senha)
+    if (!BCrypt.checkpw(userRequest.senha!, userResponse.senha!)) {
       throw InvalidPasswordException();
+    }
 
     return userResponse;
   }

@@ -12,8 +12,10 @@ import 'package:server/Utilitys/Exceptions.dart';
 
 class UserController {
   UserService userservice;
+  final String? _jwtSecret;
 
-  UserController(this.userservice);
+  UserController(this.userservice, {String? jwtSecret})
+    : _jwtSecret = jwtSecret;
 
   // Arquitetura do Handler - Entra um request no parametro e retorna uma Response (promessa)
   Future<Response> Register(Request request) async {
@@ -33,10 +35,10 @@ class UserController {
       );
 
       // Mandando para o service
-      UserModel UserResponse = await userservice.Register(usuario);
+      UserModel userResponse = await userservice.Register(usuario);
 
       // PENDENTE: Inserir um message "Usuário cadastrado com sucesso"
-      return Response.ok(jsonEncode(UserResponse.toRegister()));
+      return Response.ok(jsonEncode(userResponse.toRegister()));
 
       // Exceções
     } on UserAlreadyExistsException catch (e) {
@@ -53,6 +55,7 @@ class UserController {
 
       if (body == null) throw MissingParametersException();
       final secret =
+          _jwtSecret ??
           Platform.environment['JWTsecret'] ??
           await Customenv.get<String>(key: 'JWTsecret');
 
@@ -61,8 +64,9 @@ class UserController {
         senha: body['senha'],
       );
 
-      if (userRequest.email == null || userRequest.senha == null)
+      if (userRequest.email == null || userRequest.senha == null) {
         throw MissingParametersException();
+      }
 
       UserModel userResponse = await userservice.Auth(userRequest);
 
@@ -81,6 +85,8 @@ class UserController {
       return Response.unauthorized(jsonEncode({'invalidPassoword': e.message}));
     } on UserNotFoundException catch (e) {
       return Response.unauthorized(jsonEncode({'userNotFound': e.message}));
+    } on MissingParametersException catch (e) {
+      return Response.badRequest(body: jsonEncode({'error': e.message}));
     } catch (e, s) {
       print(s);
       return Response.badRequest(body: jsonEncode({'error': e}));
